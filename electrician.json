@@ -1,0 +1,114 @@
+{
+  "questions": [
+    {
+      "id": "Q1",
+      "type": "knowledge",
+      "max_marks": 14,
+      "question_en": "What is the difference between a fuse and an MCB?",
+      "question_hi": "फ्यूज़ और MCB में क्या अंतर है?",
+      "correct_points": [
+        "fuse wire melts and must be replaced",
+        "MCB trips and can be switched on again",
+        "both protect from overload",
+        "both protect from short circuit",
+        "MCB is faster and reusable"
+      ]
+    },
+    {
+      "id": "Q2",
+      "type": "knowledge",
+      "max_marks": 13,
+      "question_en": "Why is earthing needed in house wiring?",
+      "question_hi": "घर की वायरिंग में अर्थिंग क्यों ज़रूरी है?",
+      "correct_points": [
+        "gives a safe path for leakage current",
+        "protects people from electric shock",
+        "protects appliances",
+        "connected to the metal body of appliances",
+        "uses a green or green-yellow wire"
+      ]
+    },
+    {
+      "id": "Q3",
+      "type": "knowledge",
+      "max_marks": 13,
+      "question_en": "What do you do and which tools do you use before working on a socket?",
+      "question_hi": "सॉकेट पर काम करने से पहले आप क्या करते हैं और कौन से औज़ार इस्तेमाल करते हैं?",
+      "correct_points": [
+        "switch off the MCB or main switch",
+        "check with a tester or multimeter that power is off",
+        "use an insulated screwdriver",
+        "wear rubber gloves or insulated footwear",
+        "tell others or put a \"work in progress\" sign"
+      ]
+    },
+    {
+      "id": "Q4",
+      "type": "scenario",
+      "max_marks": 15,
+      "question_en": "A wire is sparking at a switchboard. What will you do?",
+      "question_hi": "स्विचबोर्ड पर तार से चिंगारी निकल रही है। आप क्या करेंगे?",
+      "correct_points": [
+        "switch off main supply first",
+        "do not touch with bare hands",
+        "keep people away",
+        "do not use water",
+        "find loose connection or damaged wire",
+        "repair only after power is off",
+        "test before switching on again"
+      ]
+    },
+    {
+      "id": "Q5",
+      "type": "scenario",
+      "max_marks": 15,
+      "question_en": "A customer's fan runs slow and the MCB keeps tripping. How will you find the problem?",
+      "question_hi": "ग्राहक का पंखा धीमा चलता है और MCB बार-बार ट्रिप होता है। आप समस्या कैसे ढूँढेंगे?",
+      "correct_points": [
+        "check for overload",
+        "check the fan capacitor",
+        "check wiring for short circuit or loose connection",
+        "use a multimeter or insulation tester",
+        "unplug appliances one by one",
+        "check the MCB rating"
+      ]
+    }
+  ],
+  "scoring_rules": {
+    "sections": {
+      "knowledge": {
+        "description": "Knowledge total (Q1+Q2+Q3)",
+        "marks": 40
+      },
+      "scenario": {
+        "description": "Scenario total (Q4+Q5)",
+        "marks": 30
+      },
+      "work_proof": {
+        "marks": 20
+      },
+      "safety": {
+        "description": "each answer gets safety_marks from 0 to 2, 5 answers = 10",
+        "marks": 10
+      }
+    },
+    "total": 100,
+    "levels": [
+      {
+        "level": "Beginner",
+        "condition": "below 40"
+      },
+      {
+        "level": "Skilled",
+        "condition": "40 to 69"
+      },
+      {
+        "level": "Expert",
+        "condition": "70 and above"
+      }
+    ],
+    "special_conditions": {
+      "work_proof_skipped": "total = (marks earned / 80) x 100, rounded"
+    }
+  }
+}
