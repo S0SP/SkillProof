@@ -83,10 +83,15 @@ app.post('/api/score-answer', async (req, res) => {
     return res.status(404).json({ error: 'Question not found' });
   }
 
-  const systemPrompt = `You are a skill assessor for Electricians in India.
-Your ONLY job is to check if the worker's answer contains the meanings or keywords of the provided 'Correct points'.
-Do NOT deduct marks for bad grammar, broken English/Hindi, spelling mistakes, or mixed languages.
-Reply with ONLY valid JSON, no extra text.`;
+  const systemPrompt = `You are an expert skill assessor for trade workers in India.
+Your ONLY job is to evaluate if the worker's answer conveys the correct meaning based on the provided 'Correct points'.
+CRITICAL RULES:
+1. The worker's answer may be in English, Hindi, or a mix of both (Hinglish). You MUST understand the mixed language and focus purely on the MEANING.
+2. The score must be divided into chunks of 0 to 20 points.
+3. You must only give points if the answer is correct or based on the accuracy/closeness to the correct answer.
+4. If the meaning is completely incorrect or irrelevant, give 0 marks.
+4. Do NOT deduct marks for bad grammar, broken English/Hindi, or spelling mistakes.
+5. Reply with ONLY valid JSON, no extra text.`;
 
   const userPrompt = `Question: ${language === 'hi' ? question.question_hi : question.question_en}
 Max marks: 20
@@ -243,7 +248,7 @@ app.post('/api/finish-assessment', async (req, res) => {
   }
 
   let level = "Beginner";
-  if (grandTotal >= 40 && grandTotal < 70) level = "Skilled";
+  if (grandTotal >= 40 && grandTotal < 70) level = "Intermediate";
   if (grandTotal >= 70) level = "Expert";
 
   const { data: assessment, error } = await supabase
@@ -355,7 +360,7 @@ app.post('/api/assessments/:id/approve', async (req, res) => {
   }
 
   let level = "Beginner";
-  if (grandTotal >= 40 && grandTotal < 70) level = "Skilled";
+  if (grandTotal >= 40 && grandTotal < 70) level = "Intermediate";
   if (grandTotal >= 70) level = "Expert";
 
   await supabase.from('assessments').update({

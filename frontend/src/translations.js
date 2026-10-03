@@ -48,7 +48,7 @@ export const translations = {
     safety: "Safety",
     work_proof: "Work proof",
     beginner: "Beginner",
-    skilled: "Skilled",
+    intermediate: "Intermediate",
     expert: "Expert"
   },
   hi: {
@@ -100,7 +100,7 @@ export const translations = {
     safety: "सुरक्षा",
     work_proof: "काम का सबूत",
     beginner: "शुरुआती",
-    skilled: "कुशल",
+    intermediate: "मध्यम",
     expert: "विशेषज्ञ"
   }
 };
