@@ -280,7 +280,7 @@ app.post('/api/assessor/login', (req, res) => {
 });
 
 app.get('/api/assessments/all', async (req, res) => {
-  const { data: assessments, error } = await supabase.from('assessments').select('*, workers(name)');
+  const { data: assessments, error } = await supabase.from('assessments').select('*, workers(name, phone, language)');
   if (error) return res.status(500).json({ error: error.message });
   
   const { data: answers } = await supabase.from('answers').select('assessment_id, needs_manual_review, low_confidence');
@@ -291,6 +291,8 @@ app.get('/api/assessments/all', async (req, res) => {
     return {
       ...a,
       workerName: a.workers ? a.workers.name : 'Unknown',
+      workerPhone: a.workers ? a.workers.phone : 'N/A',
+      workerLanguage: a.workers ? a.workers.language : 'Unknown',
       needsCheck,
       score: a.total_score,
       startTime: a.created_at

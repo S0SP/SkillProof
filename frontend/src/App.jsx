@@ -846,10 +846,14 @@ function AssessorList({ lang }) {
                 Check first
               </div>
             )}
-            <h3 style={{ margin: '0 0 0.5rem 0', display: 'flex', justifyContent: 'space-between' }}>
+            <h3 style={{ margin: '0 0 0.25rem 0', display: 'flex', justifyContent: 'space-between' }}>
               <span>{a.workerName}</span>
               <span style={{ fontSize: '14px', color: 'var(--color-primary)' }}>{a.score}/100</span>
             </h3>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', color: '#666', marginBottom: '0.25rem' }}>
+              <span>📞 {a.workerPhone}</span>
+              <span>🌐 {a.workerLanguage?.toUpperCase()}</span>
+            </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', color: '#666', marginBottom: '0.5rem' }}>
               <span>{a.trade.toUpperCase()} • {a.level}</span>
               <span style={{ color: a.status === 'approved' ? '#10B981' : '#F59E0B', fontWeight: 'bold' }}>
@@ -926,6 +930,7 @@ function ReviewTest({ lang }) {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', width: '100%', background: '#fff', padding: '1rem', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
         <div>
           <h2 style={{ margin: '0 0 0.25rem 0' }}>{data.worker.name}</h2>
+          <div style={{ fontSize: '14px', color: '#666', marginBottom: '0.25rem' }}>📞 {data.worker.phone} | 🌐 {data.worker.language?.toUpperCase()}</div>
           <div style={{ fontSize: '14px', color: '#666' }}>{data.assessment.trade.toUpperCase()} • {new Date(data.assessment.startTime).toLocaleDateString()}</div>
         </div>
         <div style={{ textAlign: 'right' }}>
