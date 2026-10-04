@@ -10,6 +10,10 @@ app.use(cors());
 // Increase JSON payload limit for image uploads
 app.use(express.json({ limit: '10mb' }));
 
+app.get('/', (req, res) => {
+  res.send('SkillProof Backend is running!');
+});
+
 const PORT = process.env.PORT || 3002;
 
 // Initialize Supabase
