@@ -11,12 +11,8 @@
   ],
   "rewrites": [
     {
-      "source": "/api/(.*)",
-      "destination": "https://skillproof-fseg.onrender.com/api/$1"
-    },
-    {
-      "source": "/assets/(.*)",
-      "destination": "/assets/$1"
+      "source": "/api/:path*",
+      "destination": "https://skillproof-fseg.onrender.com/api/:path*"
     },
     {
       "source": "/(.*)",
