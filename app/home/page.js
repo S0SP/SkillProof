@@ -2,122 +2,150 @@
 
 import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, BookOpen, Mic, Award, CheckCircle2 } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
+import { heroQualificationPack } from '@/lib/qualificationPacks';
 
 function HomeContent() {
-  const { lang, setLang, t, worker, setWorker, setAssessment, fetchWorkerById } = useApp();
+  const { lang, setLang, t, worker, fetchWorkerById } = useApp();
   const router = useRouter();
   const searchParams = useSearchParams();
   const workerIdFromUrl = searchParams.get('workerId');
 
-  const [trade, setTrade] = useState('');
-  const [startError, setStartError] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [trade, setTrade] = useState('electrician');
 
   useEffect(() => {
     if (!worker && workerIdFromUrl) {
       fetchWorkerById(workerIdFromUrl);
-    } else if (!worker && !workerIdFromUrl) {
-      router.push('/');
     }
-  }, [worker, workerIdFromUrl, fetchWorkerById, router]);
-
-  const handleStartTest = async () => {
-    if (!trade || !lang) return;
-    setStartError(false);
-    setLoading(true);
-
-    try {
-      const activeWorkerId = worker?.id || workerIdFromUrl;
-      const res = await fetch('/api/assessments', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ workerId: activeWorkerId, trade, language: lang }),
-      });
-
-      if (!res.ok) throw new Error("Start test failed");
-      const data = await res.json();
-      if (data.assessment) {
-        setAssessment(data.assessment);
-        router.push(`/test?assessmentId=${data.assessment.id}`);
-      } else {
-        throw new Error("No assessment returned");
-      }
-    } catch (err) {
-      console.error("Start Test Error:", err);
-      setStartError(true);
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [worker, workerIdFromUrl, fetchWorkerById]);
 
   return (
-    <div className="content">
-      <h2>{t.home_title}{worker?.name || ''}</h2>
-
-      <div style={{ width: '100%', marginTop: '1rem' }}>
-        <h3>{t.step_1}</h3>
-        <div style={{ display: 'flex', gap: '1rem' }}>
-          <div 
-            className="card" 
-            style={{ flex: 1, textAlign: 'center', cursor: 'pointer', border: lang === 'hi' ? '2px solid var(--color-primary)' : '1px solid #ccc' }}
-            onClick={() => setLang('hi')}
-          >
-            <h2>हिंदी</h2>
-          </div>
-          <div 
-            className="card" 
-            style={{ flex: 1, textAlign: 'center', cursor: 'pointer', border: lang === 'en' ? '2px solid var(--color-primary)' : '1px solid #ccc' }}
-            onClick={() => setLang('en')}
-          >
-            <h2>English</h2>
-          </div>
-        </div>
-      </div>
-
-      <div style={{ width: '100%', marginTop: '1rem' }}>
-        <h3>{t.step_2}</h3>
-        <div 
-          className="card" 
-          style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '1rem', border: trade === 'electrician' ? '2px solid var(--color-primary)' : '1px solid #ccc' }}
-          onClick={() => setTrade('electrician')}
-        >
-          <div style={{ background: '#FEF3C7', padding: '1rem', borderRadius: '50%', fontSize: '24px' }}>⚡</div>
-          <h3>{t.trade_electrician}</h3>
-        </div>
+    <div className="worker-view-container">
+      <div className="content">
         
-        <div className="card" style={{ display: 'flex', alignItems: 'center', gap: '1rem', opacity: 0.5, backgroundColor: '#f9f9f9' }}>
-          <div style={{ background: '#E0E7FF', padding: '1rem', borderRadius: '50%', fontSize: '24px' }}>🔧</div>
-          <div>
-            <h3 style={{ marginBottom: 0 }}>{t.trade_plumber}</h3>
-            <p style={{ fontSize: '14px', margin: 0 }}>{t.coming_soon}</p>
-          </div>
+        {/* Welcome Banner */}
+        <div style={{ marginBottom: '1.25rem' }}>
+          <span className="badge badge-success" style={{ marginBottom: '0.4rem' }}>
+            <Award size={12} /> Candidate Portal
+          </span>
+          <h2 style={{ fontSize: '22px', color: 'var(--color-primary)' }}>
+            {t.home_title}{worker?.name || 'Ramesh Mandal'}
+          </h2>
+          <p style={{ fontSize: '13px', color: 'var(--color-text-muted)' }}>
+            Welcome to the PMKVY RPL Skill Assessment & Certification Gateway.
+          </p>
         </div>
-        
-        <div className="card" style={{ display: 'flex', alignItems: 'center', gap: '1rem', opacity: 0.5, backgroundColor: '#f9f9f9' }}>
-          <div style={{ background: '#FCE7F3', padding: '1rem', borderRadius: '50%', fontSize: '24px' }}>🧵</div>
-          <div>
-            <h3 style={{ marginBottom: 0 }}>{t.trade_tailor}</h3>
-            <p style={{ fontSize: '14px', margin: 0 }}>{t.coming_soon}</p>
-          </div>
-        </div>
-      </div>
 
-      <div style={{ flex: 1 }} />
-      {startError && (
-        <p style={{ color: 'red', textAlign: 'center', fontWeight: 'bold' }}>
-          {lang === 'hi' ? 'सर्वर त्रुटि। फिर से कोशिश करें।' : 'Server error. Try again.'}
-        </p>
-      )}
-      <button 
-        className="btn" 
-        onClick={handleStartTest} 
-        disabled={!trade || loading} 
-        style={{ opacity: trade && !loading ? 1 : 0.5 }}
-      >
-        <ArrowRight size={24} /> {loading ? 'Starting...' : t.start_test}
-      </button>
+        {/* Step 1: Language */}
+        <div className="card" style={{ marginBottom: '1rem' }}>
+          <h4 style={{ fontSize: '14px', marginBottom: '0.65rem' }}>
+            {t.step_1} (भाषा / ভাষা)
+          </h4>
+          <div className="grid-3" style={{ gap: '0.5rem' }}>
+            <button
+              type="button"
+              className={lang === 'en' ? 'btn btn-sm' : 'btn btn-outline btn-sm'}
+              onClick={() => setLang('en')}
+            >
+              English
+            </button>
+            <button
+              type="button"
+              className={lang === 'hi' ? 'btn btn-sm' : 'btn btn-outline btn-sm'}
+              onClick={() => setLang('hi')}
+            >
+              हिन्दी
+            </button>
+            <button
+              type="button"
+              className={lang === 'bn' ? 'btn btn-sm' : 'btn btn-outline btn-sm'}
+              onClick={() => setLang('bn')}
+            >
+              বাংলা
+            </button>
+          </div>
+        </div>
+
+        {/* Step 2: Trade Selection */}
+        <div className="card" style={{ marginBottom: '1.5rem' }}>
+          <h4 style={{ fontSize: '14px', marginBottom: '0.65rem' }}>
+            {t.step_2}
+          </h4>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+            <div 
+              className="card card-clickable" 
+              style={{ 
+                border: trade === 'electrician' ? '2px solid var(--color-primary)' : '1px solid var(--color-border)',
+                backgroundColor: trade === 'electrician' ? 'var(--color-primary-subtle)' : '#ffffff',
+                padding: '0.85rem 1rem',
+                marginBottom: 0
+              }}
+              onClick={() => setTrade('electrician')}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <span style={{ fontSize: '24px' }}>⚡</span>
+                <div style={{ flex: 1 }}>
+                  <h4 style={{ fontSize: '14px', margin: 0 }}>
+                    {heroQualificationPack.title}
+                  </h4>
+                  <p style={{ margin: '0.15rem 0 0', fontSize: '11px', color: 'var(--color-text-muted)' }}>
+                    NSQF Level 3 • Mandatory Domestic Wiring, MCB & Earthing
+                  </p>
+                </div>
+                {trade === 'electrician' && <CheckCircle2 size={18} color="var(--color-primary)" />}
+              </div>
+            </div>
+
+            <div 
+              className="card card-clickable" 
+              style={{ 
+                border: trade === 'plumber' ? '2px solid var(--color-primary)' : '1px solid var(--color-border)',
+                backgroundColor: trade === 'plumber' ? 'var(--color-primary-subtle)' : '#ffffff',
+                padding: '0.85rem 1rem',
+                marginBottom: 0
+              }}
+              onClick={() => setTrade('plumber')}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <span style={{ fontSize: '24px' }}>🔧</span>
+                <div style={{ flex: 1 }}>
+                  <h4 style={{ fontSize: '14px', margin: 0 }}>
+                    Plumber (General)
+                  </h4>
+                  <p style={{ margin: '0.15rem 0 0', fontSize: '11px', color: 'var(--color-text-muted)' }}>
+                    NSQF Level 3 • Solvent Jointing, Fixtures & Pressure Leak Testing
+                  </p>
+                </div>
+                {trade === 'plumber' && <CheckCircle2 size={18} color="var(--color-primary)" />}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Action Buttons: 2 paths */}
+        <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+          <button
+            type="button"
+            className="btn"
+            style={{ width: '100%', fontSize: '16px' }}
+            onClick={() => router.push('/worker/declaration')}
+          >
+            <Mic size={18} /> Voice Self-Declaration <ArrowRight size={16} />
+          </button>
+
+          <button
+            type="button"
+            className="btn btn-secondary"
+            style={{ width: '100%' }}
+            onClick={() => router.push('/worker/orientation')}
+          >
+            <BookOpen size={16} /> Pre-Assessment Orientation (12–15h Track)
+          </button>
+        </div>
+
+      </div>
     </div>
   );
 }

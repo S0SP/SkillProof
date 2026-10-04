@@ -1,66 +1,55 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { db } from '@/lib/db';
+import { createAuditEvent } from '@/lib/cryptoLog';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request, { params }) {
   try {
     const { id } = params;
+    const assessment = await db.getAssessment(id);
 
-    const { data: assessment, error } = await supabase
-      .from('assessments')
-      .select('*, workers(*)')
-      .eq('id', id)
-      .single();
-
-    if (error || !assessment) {
+    if (!assessment) {
       return NextResponse.json({ error: 'Assessment not found' }, { status: 404 });
     }
 
-    const { data: answers } = await supabase
-      .from('answers')
-      .select('*')
-      .eq('assessment_id', assessment.id);
-
-    const { data: proofs } = await supabase
-      .from('proofs')
-      .select('*')
-      .eq('assessment_id', assessment.id);
-
-    const formattedAnswers = [];
-    if (answers) {
-      answers.forEach(a => {
-        formattedAnswers.push({
-          id: a.id,
-          questionId: a.question_id,
-          text: a.answer_text,
-          marks: a.final_marks !== null ? a.final_marks : a.ai_marks,
-          ai_marks: a.ai_marks,
-          reason: a.reason,
-          needs_manual_review: a.needs_manual_review
-        });
-      });
-    }
-
-    if (proofs && proofs.length > 0) {
-      const p = proofs[0];
-      formattedAnswers.push({
-        id: p.id,
-        skipped: p.skipped,
-        imageBase64: p.file_url,
-        marks: p.final_marks !== null ? p.final_marks : p.ai_marks,
-        ai_marks: p.ai_marks,
-        reason: p.notes,
-        good_points: p.good_points,
-        problems: p.problems
-      });
-    }
+    const answers = await db.getAnswers(id);
+    const proofs = await db.getProofs(id);
+    const scores = await db.getScores(id);
+    const declaration = await db.getDeclaration(assessment.worker_id);
+    const mapping = await db.getMapping(assessment.worker_id);
 
     return NextResponse.json({
-      assessment: { ...assessment, startTime: assessment.created_at },
-      worker: assessment.workers,
-      answers: formattedAnswers
+      assessment,
+      worker: assessment.worker,
+      answers: answers || [],
+      proofs: proofs || [],
+      scores: scores || [],
+      declaration,
+      mapping
     });
+  } catch (err) {
+    return NextResponse.json({ error: err.message }, { status: 500 });
+  }
+}
+
+export async function PATCH(request, { params }) {
+  try {
+    const { id } = params;
+    const updates = await request.json();
+
+    const updated = await db.updateAssessment(id, updates);
+
+    const auditEvent = await createAuditEvent({
+      actor: `ASSESSOR`,
+      action: "UPDATE_ASSESSMENT_STATE",
+      entity: "ASSESSMENT",
+      entity_id: id,
+      payload: updates
+    });
+    await db.logAuditEvent(auditEvent);
+
+    return NextResponse.json({ assessment: updated, audit_hash: auditEvent.block_hash });
   } catch (err) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }

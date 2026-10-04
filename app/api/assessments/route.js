@@ -1,24 +1,44 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { db } from '@/lib/db';
+import { createAuditEvent } from '@/lib/cryptoLog';
 
 export const dynamic = 'force-dynamic';
+
+export async function GET(request) {
+  try {
+    const assessments = await db.getAssessments();
+    return NextResponse.json({ assessments });
+  } catch (err) {
+    return NextResponse.json({ error: err.message }, { status: 500 });
+  }
+}
 
 export async function POST(request) {
   try {
     const body = await request.json();
-    const { workerId, trade, language } = body;
+    const { workerId, trade = 'electrician', language = 'en', batch_id = 'BATCH-KOL-01' } = body;
 
-    const { data, error } = await supabase
-      .from('assessments')
-      .insert({ worker_id: workerId, trade, language, status: 'in_progress' })
-      .select()
-      .single();
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+    if (!workerId) {
+      return NextResponse.json({ error: 'Missing workerId' }, { status: 400 });
     }
 
-    return NextResponse.json({ assessment: data });
+    const assessment = await db.createAssessment({
+      workerId,
+      trade,
+      language,
+      batch_id
+    });
+
+    const auditEvent = await createAuditEvent({
+      actor: `SYSTEM`,
+      action: "CREATE_ASSESSMENT_CASE",
+      entity: "ASSESSMENT",
+      entity_id: assessment.id,
+      payload: { workerId, trade, batch_id }
+    });
+    await db.logAuditEvent(auditEvent);
+
+    return NextResponse.json({ assessment, audit_hash: auditEvent.block_hash });
   } catch (err) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }

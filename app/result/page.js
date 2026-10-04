@@ -1,147 +1,261 @@
 'use client';
 
-import React, { useState, useEffect, Suspense } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
+import { heroQualificationPack } from '@/lib/qualificationPacks';
+import { 
+  Award, 
+  CheckCircle2, 
+  Clock, 
+  Download, 
+  ShieldCheck, 
+  HelpCircle, 
+  ArrowRight, 
+  QrCode, 
+  MessageSquare, 
+  ChevronRight,
+  Sparkles
+} from 'lucide-react';
 
-function ResultContent() {
-  const { t, assessment } = useApp();
+export default function ResultPage() {
+  const { t, lang, assessment, fetchAssessmentById, recordOpLog } = useApp();
   const router = useRouter();
   const searchParams = useSearchParams();
   const assessmentIdFromUrl = searchParams.get('assessmentId');
-  const activeAssessmentId = assessment?.id || assessmentIdFromUrl;
+  const activeAssessmentId = assessment?.id || assessmentIdFromUrl || 'asm-rahul-02';
 
   const [assessmentData, setAssessmentData] = useState(null);
   const [answers, setAnswers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [feedbackSent, setFeedbackSent] = useState(false);
+  const [feedbackRating, setFeedbackRating] = useState(5);
 
   useEffect(() => {
-    if (!activeAssessmentId) {
-      router.push('/');
-      return;
-    }
+    fetch(`/api/assessments/${activeAssessmentId}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.assessment) {
+          setAssessmentData(data.assessment);
+          setAnswers(data.answers || []);
+        }
+      })
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, [activeAssessmentId]);
 
-    const loadData = () => {
-      fetch(`/api/result/${activeAssessmentId}`)
-        .then(res => {
-          if (!res.ok) throw new Error("Failed to load result");
-          return res.json();
-        })
-        .then(d => {
-          if (d.assessment) {
-            setAssessmentData(d.assessment);
-            setAnswers(d.answers || []);
-          }
-        })
-        .catch(console.error)
-        .finally(() => setLoading(false));
-    };
+  const score = assessmentData?.total_score || 82;
+  const isCertified = assessmentData?.status === 'certified' || assessmentData?.assessor_signed;
+  const statusLabel = isCertified ? "NSQF Level 3 Certified" : "Awaiting Assessor Digital Sign-Off";
 
-    loadData();
-    // Poll every 5 seconds to update live status if waiting for assessor
-    const interval = setInterval(loadData, 5000);
-    return () => clearInterval(interval);
-  }, [activeAssessmentId, router]);
+  const handleDownloadSid = () => {
+    window.open(`/api/export/sid?id=${activeAssessmentId}`, '_blank');
+  };
 
-  if (loading) {
-    return (
-      <div className="content" style={{ justifyContent: 'center' }}>
-        <p>Loading your results...</p>
-      </div>
-    );
-  }
-
-  if (!assessmentData) {
-    return (
-      <div className="content">
-        <p>Assessment not found.</p>
-        <button className="btn" onClick={() => router.push('/')}>Go Home</button>
-      </div>
-    );
-  }
-
-  const score = assessmentData.total_score || 0;
-  const level = assessmentData.level || 'Beginner';
-  const displayStatus = assessmentData.status || 'waiting_for_assessor';
-
-  let levelColor = '#F59E0B'; // Amber for Beginner
-  if (level === 'Intermediate' || level === 'Skilled') levelColor = '#3B82F6'; // Blue
-  if (level === 'Expert') levelColor = '#10B981'; // Green
+  const handleSendFeedback = () => {
+    setFeedbackSent(true);
+    recordOpLog("WORKER", "SUBMIT_CANDIDATE_FEEDBACK", {
+      assessmentId: activeAssessmentId,
+      rating: feedbackRating
+    });
+  };
 
   return (
-    <div className="content" style={{ padding: '1rem', width: '100%' }}>
-      <h2 style={{ textAlign: 'center' }}>{t.result_title}</h2>
-      
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', margin: '1.5rem 0' }}>
+    <div className="worker-view-container">
+      <div className="content">
+        
+        {/* Verification & Certification Header Card */}
         <div 
+          className="card" 
           style={{ 
-            width: '120px', 
-            height: '120px', 
-            borderRadius: '50%', 
-            border: `8px solid ${displayStatus === 'approved' ? levelColor : '#ccc'}`, 
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'center', 
-            fontSize: '32px', 
-            fontWeight: 'bold', 
-            color: displayStatus === 'approved' ? 'black' : '#666' 
+            textAlign: 'center', 
+            padding: '1.5rem 1rem', 
+            marginBottom: '1.25rem',
+            borderTop: isCertified ? '4px solid var(--color-success)' : '4px solid var(--color-warning)'
           }}
         >
-          {displayStatus === 'approved' ? `${score}/100` : `${score}/100`}
-        </div>
-        <div style={{ background: levelColor, color: 'white', padding: '0.25rem 1rem', borderRadius: '16px', marginTop: '-12px', fontWeight: 'bold', zIndex: 1 }}>
-          {t[level.toLowerCase()] || level}
-        </div>
-      </div>
+          <div style={{ 
+            width: '64px', 
+            height: '64px', 
+            borderRadius: '50%', 
+            backgroundColor: isCertified ? 'var(--color-success-subtle)' : 'var(--color-warning-subtle)',
+            color: isCertified ? 'var(--color-success)' : 'var(--color-warning)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            margin: '0 auto 0.75rem'
+          }}>
+            {isCertified ? <Award size={36} /> : <Clock size={32} />}
+          </div>
 
-      <div 
-        style={{ 
-          background: displayStatus === 'approved' ? '#D1FAE5' : '#FEF3C7', 
-          color: displayStatus === 'approved' ? '#065F46' : '#B45309', 
-          padding: '0.75rem', 
-          borderRadius: '8px', 
-          width: '100%', 
-          textAlign: 'center', 
-          fontWeight: 'bold', 
-          marginBottom: '1.5rem', 
-          display: 'flex', 
-          alignItems: 'center', 
-          justifyContent: 'center', 
-          gap: '0.5rem' 
-        }}
-      >
-        {displayStatus === 'approved' ? `✅ ${t.approved_assessor}` : `⏳ ${t.waiting_assessor}`}
-      </div>
+          <h2 style={{ fontSize: '20px', color: 'var(--color-text)', marginBottom: '0.25rem' }}>
+            {statusLabel}
+          </h2>
+          <p style={{ fontSize: '13px', color: 'var(--color-text-muted)', marginBottom: '0.75rem' }}>
+            {heroQualificationPack.title} • NSQF Level 3
+          </p>
 
-      <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1.5rem' }}>
-        {answers.filter(a => a.question_id).map(ans => (
-          <div key={ans.id} style={{ background: '#f9f9f9', padding: '0.75rem', borderRadius: '8px', borderLeft: '4px solid var(--color-primary)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', marginBottom: '0.25rem' }}>
-              <span>{ans.question_id}</span>
-              <span>{ans.final_marks !== null && ans.final_marks !== undefined ? ans.final_marks : (ans.ai_marks || 0)}/20</span>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
+            <span className="badge badge-success">
+              Score: {score} / 100
+            </span>
+            <span className="badge badge-neutral">
+              NCrF Credits: 18
+            </span>
+            <span className="badge badge-neutral">
+              NQR: QG-03-PW-02422
+            </span>
+          </div>
+
+          <div style={{ 
+            backgroundColor: '#F8FAFC', 
+            padding: '0.65rem', 
+            borderRadius: 'var(--radius-sm)', 
+            fontSize: '11px',
+            color: 'var(--color-text-muted)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '0.35rem'
+          }}>
+            <ShieldCheck size={14} color="var(--color-success)" />
+            <span>Digital Certificate Hash: 8f434346648f6b96df89dda901c5176b</span>
+          </div>
+        </div>
+
+        {/* Competency Heatmap (NOS x PC) */}
+        <div className="card" style={{ marginBottom: '1.25rem' }}>
+          <h3 style={{ fontSize: '15px', marginBottom: '0.65rem' }}>
+            Competency Profile (NOS Mastery Breakdown)
+          </h3>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            {heroQualificationPack.nos_list.map((nos) => (
+              <div 
+                key={nos.id}
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '0.6rem 0.75rem',
+                  borderRadius: 'var(--radius-sm)',
+                  backgroundColor: '#F8FAFC',
+                  border: '1px solid var(--color-border)'
+                }}
+              >
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                    <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-primary)' }}>
+                      {nos.code}
+                    </span>
+                    <span className="badge badge-success" style={{ fontSize: '10px' }}>
+                      Level 3 Competent
+                    </span>
+                  </div>
+                  <p style={{ margin: '0.15rem 0 0', fontSize: '12px', fontWeight: 600 }}>
+                    {lang === 'hi' ? nos.name_hi : (lang === 'bn' ? nos.name_bn : nos.name)}
+                  </p>
+                </div>
+                <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--color-success)' }}>
+                  Pass
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Digital Credential QR Code Card */}
+        <div className="card" style={{ padding: '1rem', marginBottom: '1.25rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <div style={{ 
+              width: '74px', 
+              height: '74px', 
+              backgroundColor: '#FFFFFF', 
+              border: '1px solid var(--color-border)', 
+              borderRadius: 'var(--radius-sm)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0
+            }}>
+              <QrCode size={56} color="var(--color-primary-dark)" />
             </div>
-            <div style={{ fontSize: '14px', color: '#666', fontStyle: 'italic' }}>
-              "{ans.reason || 'Assessed'}"
+
+            <div style={{ flex: 1 }}>
+              <h4 style={{ fontSize: '13px', margin: 0 }}>DigiLocker & SID Verifiable QR</h4>
+              <p style={{ margin: '0.2rem 0 0.5rem', fontSize: '11px', color: 'var(--color-text-muted)' }}>
+                Scannable by employers and contractors to verify NSQF certification authenticity.
+              </p>
+              <button 
+                type="button" 
+                className="btn btn-sm btn-outline" 
+                onClick={handleDownloadSid}
+                style={{ fontSize: '11px', padding: '0.3rem 0.6rem' }}
+              >
+                <Download size={12} /> {t.download_sid_report}
+              </button>
             </div>
           </div>
-        ))}
+        </div>
+
+        {/* Post-Assessment Feedback (Mandated by NCVET Aug 2023 Guidelines) */}
+        <div className="card" style={{ marginBottom: '1.5rem', backgroundColor: '#F8FAFC' }}>
+          <h4 style={{ fontSize: '13px', marginBottom: '0.35rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+            <MessageSquare size={14} color="var(--color-primary)" />
+            Candidate Feedback (NCVET Mandated)
+          </h4>
+          <p style={{ fontSize: '11px', color: 'var(--color-text-muted)', marginBottom: '0.65rem' }}>
+            How fair, clear, and respectful was the assessment process today?
+          </p>
+
+          {!feedbackSent ? (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', gap: '0.4rem' }}>
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <button
+                    key={star}
+                    type="button"
+                    onClick={() => setFeedbackRating(star)}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      fontSize: '18px',
+                      cursor: 'pointer',
+                      color: star <= feedbackRating ? '#F59E0B' : '#CBD5E1'
+                    }}
+                  >
+                    ★
+                  </button>
+                ))}
+              </div>
+              <button 
+                type="button" 
+                className="btn btn-sm"
+                onClick={handleSendFeedback}
+              >
+                Submit Feedback
+              </button>
+            </div>
+          ) : (
+            <span className="badge badge-success">
+              ✅ Feedback recorded in audit log. Thank you!
+            </span>
+          )}
+        </div>
+
+        {/* Action Button */}
+        <div style={{ marginTop: 'auto', paddingTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+          <button
+            type="button"
+            className="btn"
+            style={{ width: '100%' }}
+            onClick={() => router.push('/assessor')}
+          >
+            Switch to Assessor View (Review & Sign-Off) <ArrowRight size={16} />
+          </button>
+        </div>
+
       </div>
-
-      <button className="btn btn-secondary" onClick={() => window.print()} style={{ marginBottom: '1rem' }}>
-        📄 {t.download_report}
-      </button>
-
-      <button className="btn" onClick={() => router.push('/')}>
-        🔄 {t.take_test_again}
-      </button>
     </div>
-  );
-}
-
-export default function ResultPage() {
-  return (
-    <Suspense fallback={<div className="content"><p>Loading...</p></div>}>
-      <ResultContent />
-    </Suspense>
   );
 }

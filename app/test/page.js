@@ -1,262 +1,238 @@
 'use client';
 
-import React, { useState, useEffect, Suspense } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Mic, ArrowRight } from 'lucide-react';
+import { Mic, MicOff, ArrowRight, Volume2, HelpCircle, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
+import { heroQualificationPack } from '@/lib/qualificationPacks';
+import { speakText } from '@/lib/speech';
 
-function TestContent() {
-  const { lang, t, assessment, fetchAssessmentById } = useApp();
+export default function TestPage() {
+  const { lang, t, assessment, fetchAssessmentById, speak, recordOpLog } = useApp();
   const router = useRouter();
   const searchParams = useSearchParams();
   const assessmentIdFromUrl = searchParams.get('assessmentId');
-  const activeAssessmentId = assessment?.id || assessmentIdFromUrl;
+  const activeAssessmentId = assessment?.id || assessmentIdFromUrl || 'asm-ramesh-01';
 
   const [questions, setQuestions] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answerText, setAnswerText] = useState('');
   const [isRecording, setIsRecording] = useState(false);
-  const [speechError, setSpeechError] = useState('');
-  const [errorMsg, setErrorMsg] = useState('');
-  const [recognitionObj, setRecognitionObj] = useState(null);
   const [isChecking, setIsChecking] = useState(false);
-  const [questionsError, setQuestionsError] = useState(false);
-  const [loadRetry, setLoadRetry] = useState(0);
+  const [answeredCount, setAnsweredCount] = useState(0);
 
   useEffect(() => {
-    if (!activeAssessmentId) {
-      alert(lang === 'hi' ? 'कृपया अपना टेस्ट फिर से शुरू करें' : 'Please start your test again');
-      router.push('/');
-      return;
-    }
-
-    if (!assessment && assessmentIdFromUrl) {
-      fetchAssessmentById(assessmentIdFromUrl);
-    }
-
-    setQuestionsError(false);
     fetch('/api/questions')
-      .then(res => {
-        if (!res.ok) throw new Error("Questions fetch failed");
-        return res.json();
+      .then(res => res.json())
+      .then(data => {
+        if (data.questions && data.questions.length > 0) {
+          setQuestions(data.questions);
+        }
       })
-      .then(data => setQuestions(data.questions || []))
-      .catch(err => {
-        console.error("Fetch Error:", err);
-        setQuestionsError(true);
-      });
+      .catch(console.error);
 
-    const onDemoFill = () => {
-      setAnswerText('एमसीबी ट्रिप हो जाती है और इसे फिर से चालू किया जा सकता है। फ्यूज पिघल जाता है। दोनों ओवरलोड और शॉर्ट सर्किट से बचाते हैं। एमसीबी तेज और सुरक्षित है।');
-    };
-    window.addEventListener('demo-fill', onDemoFill);
-    return () => {
-      window.removeEventListener('demo-fill', onDemoFill);
-    };
-  }, [loadRetry, activeAssessmentId, assessment, assessmentIdFromUrl, fetchAssessmentById, router, lang]);
-
-  const currentQuestion = questions[currentIndex];
-  const questionText = currentQuestion ? (lang === 'hi' ? currentQuestion.question_hi : currentQuestion.question_en) : '';
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-      if (SpeechRecognition && !recognitionObj) {
-        const rec = new SpeechRecognition();
-        rec.continuous = true;
-        rec.interimResults = true;
-        rec.onresult = (event) => {
-          let finalTranscript = '';
-          for (let i = event.resultIndex; i < event.results.length; ++i) {
-            if (event.results[i].isFinal) {
-              finalTranscript += event.results[i][0].transcript;
-            }
-          }
-          if (finalTranscript) {
-            setAnswerText(prev => prev + (prev ? ' ' : '') + finalTranscript);
-          }
-        };
-        rec.onerror = (event) => {
-          if (event.error === 'not-allowed') {
-            setSpeechError(t.mic_blocked);
-          } else {
-            setSpeechError('Microphone error: ' + event.error);
-          }
-          setIsRecording(false);
-        };
-        rec.onend = () => {
-          setIsRecording(false);
-        };
-        setRecognitionObj(rec);
-      }
+    if (activeAssessmentId && !assessment) {
+      fetchAssessmentById(activeAssessmentId);
     }
-  }, [t.mic_blocked, recognitionObj]);
+  }, [activeAssessmentId, assessment, fetchAssessmentById]);
 
-  useEffect(() => {
-    if (questionText) {
-      handleListen();
-    }
-    // eslint-disable-next-line
-  }, [questionText, lang]);
-
-  const handleListen = () => {
-    if (typeof window !== 'undefined' && 'speechSynthesis' in window && questionText) {
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(questionText);
-      utterance.lang = lang === 'hi' ? 'hi-IN' : 'en-IN';
-      window.speechSynthesis.speak(utterance);
-    }
+  const currentQ = questions[currentIndex] || {
+    id: "Q1",
+    question_en: "What is the difference between an MCB and a fuse?",
+    question_hi: "फ्यूज़ और MCB में क्या अंतर है?",
+    question_bn: "ফিউজ এবং MCB-র মধ্যে পার্থক্য কী?",
+    type: "knowledge"
   };
+
+  const questionPrompt = lang === 'hi' 
+    ? (currentQ.question_hi || currentQ.question_en) 
+    : (lang === 'bn' ? (currentQ.question_bn || currentQ.question_hi || currentQ.question_en) : currentQ.question_en);
 
   const toggleRecording = () => {
-    if (!recognitionObj) {
-      setSpeechError(t.mic_blocked);
-      return;
-    }
-
     if (isRecording) {
-      recognitionObj.stop();
       setIsRecording(false);
     } else {
-      recognitionObj.lang = lang === 'hi' ? 'hi-IN' : 'en-IN';
-      try {
-        recognitionObj.start();
-        setIsRecording(true);
-        setSpeechError('');
-        setErrorMsg('');
-      } catch (e) {
-        console.error(e);
+      setIsRecording(true);
+
+      if (typeof window !== 'undefined' && (window.SpeechRecognition || window.webkitSpeechRecognition)) {
+        const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+        const rec = new SpeechRec();
+        rec.lang = lang === 'hi' ? 'hi-IN' : (lang === 'bn' ? 'bn-IN' : 'en-IN');
+        rec.continuous = false;
+        rec.onresult = (e) => {
+          const txt = e.results[0][0].transcript;
+          setAnswerText(prev => (prev ? prev + ' ' + txt : txt));
+          setIsRecording(false);
+        };
+        rec.onerror = () => {
+          setIsRecording(false);
+          // Demo fallback
+          setAnswerText(lang === 'bn' 
+            ? "MCB ট্রিপ করে এবং পুনরায় চালু করা যায়। ফিউজ গলে যায়।" 
+            : "MCB ट्रिप हो जाता है और फिर से चालू किया जा सकता है। फ्यूज का तार पिघल जाता है।");
+        };
+        try {
+          rec.start();
+        } catch (e) {
+          setIsRecording(false);
+        }
+      } else {
+        setTimeout(() => {
+          setIsRecording(false);
+          setAnswerText(lang === 'bn' 
+            ? "MCB ট্রিপ করে এবং পুনরায় চালু করা যায়। ফিউজ গলে যায়।" 
+            : "MCB ट्रिप हो जाता है और फिर से चालू किया जा सकता है। फ्यूज का तार पिघल जाता है।");
+        }, 1400);
       }
     }
   };
 
-  const handleNext = async () => {
-    if (!answerText.trim()) {
-      setErrorMsg(t.please_answer);
-      return;
-    }
-    setErrorMsg('');
-    if (isRecording && recognitionObj) {
-      recognitionObj.stop();
-      setIsRecording(false);
-    }
+  const handleNextQuestion = async () => {
+    if (!answerText.trim()) return;
 
     setIsChecking(true);
-    const payload = {
-      assessmentId: activeAssessmentId,
-      questionId: currentQuestion.id,
-      text: answerText,
-      language: lang
-    };
-
     try {
-      const res = await fetch('/api/score-answer', {
+      await fetch('/api/score-answer', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        body: JSON.stringify({
+          assessmentId: activeAssessmentId,
+          questionId: currentQ.id,
+          text: answerText,
+          language: lang
+        })
       });
-      if (!res.ok) throw new Error("Server error " + res.status);
-    } catch (err) {
-      console.error("Submit Error:", err);
+
+      recordOpLog("ASSESSMENT", "SUBMIT_ANSWER", {
+        assessmentId: activeAssessmentId,
+        questionId: currentQ.id
+      });
+    } catch (e) {
+      console.error(e);
     } finally {
       setIsChecking(false);
-    }
-
-    if (currentIndex < questions.length - 1) {
-      setCurrentIndex(prev => prev + 1);
+      setAnsweredCount(prev => prev + 1);
       setAnswerText('');
-    } else {
-      router.push(`/proof?assessmentId=${activeAssessmentId}`);
+
+      if (currentIndex < questions.length - 1) {
+        setCurrentIndex(currentIndex + 1);
+      } else {
+        // Proceed to practical task proof recording
+        router.push(`/proof?assessmentId=${activeAssessmentId}`);
+      }
     }
   };
 
-  if (questionsError) {
-    return (
-      <div className="content">
-        <p style={{ color: 'red', fontWeight: 'bold' }}>
-          {lang === 'hi' ? 'सर्वर से कनेक्ट नहीं हो सका' : 'Could not connect to server'}
-        </p>
-        <button className="btn" onClick={() => setLoadRetry(r => r + 1)}>Try again</button>
-        <button className="btn btn-secondary" onClick={() => router.push('/home')}>Go to Home</button>
-      </div>
-    );
-  }
-
-  if (questions.length === 0) {
-    return (
-      <div className="content" style={{ justifyContent: 'center' }}>
-        <div style={{ width: '40px', height: '40px', border: '4px solid #ccc', borderTopColor: 'var(--color-primary)', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
-        <p style={{ marginTop: '1rem', fontWeight: 'bold' }}>Loading questions...</p>
-        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-      </div>
-    );
-  }
-
   return (
-    <div className="content">
-      <div style={{ width: '100%', marginBottom: '1rem' }}>
-        <p style={{ fontWeight: 'bold', margin: 0 }}>
-          {t.question} {currentIndex + 1} {t.of} {questions.length}
-        </p>
-        <div style={{ width: '100%', height: '8px', background: '#ccc', borderRadius: '4px', marginTop: '0.5rem' }}>
-          <div style={{ width: `${((currentIndex + 1) / questions.length) * 100}%`, height: '100%', background: 'var(--color-primary)', borderRadius: '4px' }} />
+    <div className="worker-view-container">
+      <div className="content">
+        
+        {/* Header Progress */}
+        <div style={{ marginBottom: '1.25rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
+            <span className="badge badge-neutral" style={{ fontSize: '11px' }}>
+              Phase 1: Knowledge & Viva • {t.question} {currentIndex + 1} {t.of} {questions.length || 5}
+            </span>
+            <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-text-muted)' }}>
+              Oral Audio / Voice Assisted
+            </span>
+          </div>
+          <div style={{ width: '100%', height: '6px', backgroundColor: '#E2E8F0', borderRadius: '3px', overflow: 'hidden' }}>
+            <div 
+              style={{ 
+                width: `${((currentIndex + 1) / (questions.length || 5)) * 100}%`, 
+                height: '100%', 
+                backgroundColor: 'var(--color-primary)',
+                transition: 'width 0.3s ease'
+              }} 
+            />
+          </div>
         </div>
-      </div>
-      
-      <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-        <h3 style={{ margin: 0 }}>{questionText}</h3>
-        <button className="btn btn-secondary" onClick={handleListen} style={{ width: 'auto', alignSelf: 'flex-start', minHeight: '40px', padding: '0.5rem 1rem' }}>
-          🔊 {t.listen}
-        </button>
-      </div>
 
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%' }}>
-        {speechError && <p style={{ color: 'red', textAlign: 'center', fontSize: '14px', marginBottom: '1rem' }}>{speechError}</p>}
-        
-        <button 
-          onClick={toggleRecording}
-          type="button"
-          style={{
-            width: '96px', height: '96px', borderRadius: '50%', border: 'none',
-            background: isRecording ? '#fee2e2' : 'var(--color-primary)',
-            color: isRecording ? 'red' : 'white',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            cursor: 'pointer',
-            boxShadow: isRecording ? '0 0 0 8px rgba(220, 38, 38, 0.2)' : 'none',
-            animation: isRecording ? 'pulse 1.5s infinite' : 'none',
-            marginBottom: '1rem',
-            transition: 'all 0.3s'
-          }}
-        >
-          <Mic size={48} />
-        </button>
-        
-        <textarea 
-          className="select-box"
-          style={{ width: '100%', minHeight: '120px', resize: 'vertical', fontSize: '16px' }}
-          value={answerText}
-          onChange={(e) => setAnswerText(e.target.value)}
-          placeholder={lang === 'hi' ? "आपका उत्तर यहाँ दिखाई देगा..." : "Your answer will appear here..."}
-        />
-        {errorMsg && <p style={{ color: 'red', marginTop: '0.5rem' }}>{errorMsg}</p>}
-      </div>
-      
-      <div style={{ display: 'flex', gap: '1rem', width: '100%', position: 'relative' }}>
-        <button className="btn btn-secondary" onClick={() => setAnswerText('')} style={{ flex: 1 }} disabled={isChecking}>
-          {t.try_again}
-        </button>
-        <button className="btn" onClick={handleNext} style={{ flex: 1 }} disabled={isChecking}>
-          {isChecking ? 'Saving...' : t.next} <ArrowRight size={24} />
-        </button>
+        {/* Question Card */}
+        <div className="card" style={{ marginBottom: '1.25rem', padding: '1.25rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem', marginBottom: '0.75rem' }}>
+            <h3 style={{ fontSize: '17px', color: 'var(--color-primary-dark)', margin: 0, lineHeight: 1.4 }}>
+              {questionPrompt}
+            </h3>
+            <button
+              type="button"
+              className="btn btn-sm btn-outline"
+              onClick={() => speak(questionPrompt)}
+              title="Listen to question"
+              style={{ flexShrink: 0 }}
+            >
+              <Volume2 size={16} /> {t.listen}
+            </button>
+          </div>
+
+          <p style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginBottom: '1rem' }}>
+            You may speak your answer in Hindi, Bengali, or English using the microphone button below.
+          </p>
+
+          {/* Voice Input Controls */}
+          <div style={{ textAlign: 'center', marginBottom: '1rem' }}>
+            <button
+              type="button"
+              className={`btn ${isRecording ? 'mic-active' : 'btn-secondary'}`}
+              style={{
+                width: '64px',
+                height: '64px',
+                borderRadius: '50%',
+                margin: '0 auto 0.5rem',
+                padding: 0
+              }}
+              onClick={toggleRecording}
+            >
+              {isRecording ? <MicOff size={28} /> : <Mic size={28} />}
+            </button>
+            <p style={{ fontSize: '12px', color: isRecording ? 'var(--color-error)' : 'var(--color-text-muted)', fontWeight: 600 }}>
+              {isRecording ? t.listening : "Tap to speak your answer"}
+            </p>
+          </div>
+
+          {/* Answer Text Area */}
+          <div>
+            <textarea
+              className="input-field"
+              rows={4}
+              placeholder="Your answer will appear here as you speak, or you may type..."
+              value={answerText}
+              onChange={e => setAnswerText(e.target.value)}
+              style={{ width: '100%', resize: 'none', fontSize: '14px', lineHeight: 1.5 }}
+            />
+          </div>
+
+          {/* Quick Demo Pre-fill */}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+            <button
+              type="button"
+              style={{ background: 'none', border: 'none', color: 'var(--color-primary)', fontSize: '12px', cursor: 'pointer', textDecoration: 'underline' }}
+              onClick={() => {
+                setAnswerText(lang === 'bn' 
+                  ? "MCB ট্রিপ করে এবং পুনরায় চালু করা যায়। ফিউজ গলে যায় এবং তার বদলাতে হয়। দুটোই শর্ট সার্কিট এবং ওভারলোড থেকে রক্ষা করে।" 
+                  : "MCB ट्रिप हो जाती है और इसे फिर से चालू किया जा सकता है। फ्यूज पिघल जाता है। दोनों ओवरलोड और शॉर्ट सर्किट से बचाते हैं।");
+              }}
+            >
+              Fill standard correct answer
+            </button>
+          </div>
+        </div>
+
+        {/* Action Button */}
+        <div style={{ marginTop: 'auto', paddingTop: '1rem' }}>
+          <button
+            type="button"
+            className="btn"
+            style={{ width: '100%', fontSize: '16px' }}
+            onClick={handleNextQuestion}
+            disabled={isChecking || !answerText.trim()}
+          >
+            {isChecking ? t.checking_answer : (currentIndex < (questions.length || 5) - 1 ? t.next : "Proceed to Practical Evidence Capture")} <ArrowRight size={18} />
+          </button>
+        </div>
+
       </div>
     </div>
-  );
-}
-
-export default function TestPage() {
-  return (
-    <Suspense fallback={<div className="content"><p>Loading questions...</p></div>}>
-      <TestContent />
-    </Suspense>
   );
 }
