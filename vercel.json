@@ -7,16 +7,12 @@
       "config": {
         "distDir": "frontend/dist"
       }
-    },
-    {
-      "src": "backend/server.js",
-      "use": "@vercel/node"
     }
   ],
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "/backend/server.js"
+      "destination": "https://skillproof-fseg.onrender.com/api/$1"
     },
     {
       "source": "/assets/(.*)",
