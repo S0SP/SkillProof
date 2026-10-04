@@ -15,8 +15,12 @@
       "destination": "https://skillproof-fseg.onrender.com/api/:path*"
     },
     {
+      "source": "/assets/:path*",
+      "destination": "/frontend/dist/assets/:path*"
+    },
+    {
       "source": "/(.*)",
-      "destination": "/index.html"
+      "destination": "/frontend/dist/index.html"
     }
   ]
 }
