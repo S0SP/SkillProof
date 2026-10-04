@@ -383,10 +383,8 @@ app.get('/api/result/:assessmentId', async (req, res) => {
     res.json({ assessment, answers });
 });
 
-if (process.env.NODE_ENV !== 'production') {
-  app.listen(PORT, () => {
-    console.log(`Backend running on http://localhost:${PORT}`);
-  });
-}
+app.listen(PORT, () => {
+  console.log(`Backend running on port ${PORT}`);
+});
 
 module.exports = app;
